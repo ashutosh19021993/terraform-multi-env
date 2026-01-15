@@ -19,6 +19,10 @@ spec:
       value: "true"
     - name: TF_INPUT
       value: "false"
+    - name: TF_PLUGIN_CACHE_DIR
+      value: "/tmp/terraform-plugin-cache"
+    - name: TMPDIR
+      value: "/tmp"
     - name: AWS_ACCESS_KEY_ID
       value: "test"
     - name: AWS_SECRET_ACCESS_KEY
@@ -28,7 +32,15 @@ spec:
     - name: AWS_REGION
       value: "us-east-1"
     - name: LOCALSTACK_ENDPOINT
-      value: "http://localstack:4566"
+      value: "http://host.docker.internal:4566"
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "1Gi"
+
   - name: aws
     image: amazon/aws-cli:2.17.0
     command: ["sh", "-c", "cat"]
@@ -43,16 +55,12 @@ spec:
     - name: AWS_REGION
       value: "us-east-1"
     - name: LOCALSTACK_ENDPOINT
-      value: "http://localstack:4566"
+      value: "http://host.docker.internal:4566"
 """
     }
   }
 
-  // If you rely on port-forward, webhook won't work.
-  // Keep polling if you want auto trigger; otherwise remove this.
-  triggers {
-    pollSCM('H/2 * * * *')
-  }
+  triggers { pollSCM('H/2 * * * *') }
 
   parameters {
     choice(name: 'ENV', choices: ['dev', 'stage', 'prod'], description: 'Select env folder under envs/')
@@ -64,10 +72,7 @@ spec:
     PLAN_TXT  = "plan.txt"
   }
 
-  options {
-    disableConcurrentBuilds()
-    // removed timestamps() because plugin not available
-  }
+  options { disableConcurrentBuilds() }
 
   stages {
     stage("Checkout") {
@@ -81,7 +86,8 @@ spec:
             set -e
             echo "Creating tf-state bucket in LocalStack (if not exists)..."
             aws --endpoint-url=${LOCALSTACK_ENDPOINT} s3api create-bucket --bucket tf-state >/dev/null 2>&1 || true
-            echo "Bucket ready."
+            echo "Verifying buckets:"
+            aws --endpoint-url=${LOCALSTACK_ENDPOINT} s3api list-buckets
           '''
         }
       }
@@ -105,6 +111,11 @@ spec:
           sh '''
             set -e
             cd ${TF_DIR}
+
+            # Clean any cached backend/provider to avoid stale endpoints or corrupted plugins
+            rm -rf .terraform
+            mkdir -p /tmp/terraform-plugin-cache
+
             terraform init -input=false -reconfigure
             terraform validate
           '''
@@ -151,6 +162,9 @@ spec:
           sh '''
             set -e
             cd ${TF_DIR}
+
+            rm -rf .terraform
+            mkdir -p /tmp/terraform-plugin-cache
 
             terraform init -input=false -reconfigure
 
