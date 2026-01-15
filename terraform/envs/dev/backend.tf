@@ -5,7 +5,7 @@ terraform {
     region = "us-east-1"
 
     # locking (new)
-    use_lockfile = true
+    #use_lockfile = true
 
     # LocalStack endpoint (new style)
     endpoints = {
