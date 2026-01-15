@@ -9,7 +9,7 @@ terraform {
 
     # LocalStack endpoint (new style)
     endpoints = {
-      s3 = "http://localstack:4566"
+      s3 = "http://host.docker.internal:4566"
     }
 
     # CRITICAL: avoid tf-state.localstack DNS
