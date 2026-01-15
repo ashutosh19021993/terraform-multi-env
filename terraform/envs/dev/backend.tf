@@ -13,7 +13,7 @@ terraform {
     }
 
     # CRITICAL: avoid tf-state.localhost DNS
-    use_path_style = true
+    #use_path_style = true
 
     # LocalStack skips
     skip_credentials_validation = true
