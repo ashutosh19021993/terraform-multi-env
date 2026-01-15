@@ -22,8 +22,8 @@ module "vpc" {
 
   name = "${var.project}-${var.env}-${var.region}-vpc"
 
-  cidr = var.vpc_cidr
-  azs  = var.azs
+  cidr                 = var.vpc_cidr
+  azs                  = var.azs
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
 
