@@ -59,7 +59,7 @@ spec:
   }
 
   environment {
-    TF_DIR = "envs/${params.ENV}"
+    TF_DIR = "terraform/envs/${params.ENV}"
     PLAN_FILE = "tfplan"
     PLAN_TXT  = "plan.txt"
   }
