@@ -9,10 +9,10 @@ terraform {
 
     # LocalStack endpoint (new style)
     endpoints = {
-      s3 = "http://localhost:4566"
+      s3 = "http://localstack:4566"
     }
 
-    # CRITICAL: avoid tf-state.localhost DNS
+    # CRITICAL: avoid tf-state.localstack DNS
     #use_path_style = true
 
     # LocalStack skips

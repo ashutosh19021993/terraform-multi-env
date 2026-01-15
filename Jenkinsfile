@@ -105,7 +105,7 @@ spec:
           sh '''
             set -e
             cd ${TF_DIR}
-            terraform init -input=false
+            terraform init -input=false -reconfigure
             terraform validate
           '''
         }
@@ -152,7 +152,7 @@ spec:
             set -e
             cd ${TF_DIR}
 
-            terraform init -input=false
+            terraform init -input=false -reconfigure
 
             echo "Applying saved plan..."
             terraform apply -auto-approve ${PLAN_FILE}
