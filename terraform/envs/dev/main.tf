@@ -18,7 +18,7 @@ module "ec2" {
 }
 
 module "vpc" {
-  source = "../../../modules/vpc"
+  source = "../../modules/vpc"
 
   name = "${var.project}-${var.env}-${var.region}-vpc"
 
