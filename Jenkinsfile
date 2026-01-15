@@ -21,6 +21,8 @@ spec:
       value: "false"
     - name: TF_PLUGIN_CACHE_DIR
       value: "/tmp/terraform-plugin-cache"
+    - name: TF_DATA_DIR
+      value: "/tmp/tfdata"
     - name: TMPDIR
       value: "/tmp"
     - name: AWS_ACCESS_KEY_ID
@@ -63,7 +65,7 @@ spec:
   triggers { pollSCM('H/2 * * * *') }
 
   parameters {
-    choice(name: 'ENV', choices: ['dev', 'stage', 'prod'], description: 'Select env folder under envs/')
+    choice(name: 'ENV', choices: ['dev', 'stage', 'prod'], description: 'Select env folder under terraform/envs/')
   }
 
   environment {
@@ -110,14 +112,21 @@ spec:
         container('terraform') {
           sh '''
             set -e
-            cd ${TF_DIR}
 
-            # Clean any cached backend/provider to avoid stale endpoints or corrupted plugins
+            # Run terraform from /tmp to avoid noexec workspace volumes (provider cannot start otherwise)
+            rm -rf /tmp/tfwork
+            mkdir -p /tmp/tfwork
+            cp -R ${TF_DIR}/. /tmp/tfwork/
+            cd /tmp/tfwork
+
             rm -rf .terraform
-            mkdir -p /tmp/terraform-plugin-cache
+            mkdir -p /tmp/tfdata /tmp/terraform-plugin-cache
+            export TF_DATA_DIR=/tmp/tfdata
+            export TF_PLUGIN_CACHE_DIR=/tmp/terraform-plugin-cache
+            export TMPDIR=/tmp
 
-            terraform init -input=false -reconfigure
-            terraform validate
+            terraform init -input=false -reconfigure -no-color
+            terraform validate -no-color
           '''
         }
       }
@@ -128,15 +137,32 @@ spec:
         container('terraform') {
           sh '''
             set -e
-            cd ${TF_DIR}
+
+            rm -rf /tmp/tfwork
+            mkdir -p /tmp/tfwork
+            cp -R ${TF_DIR}/. /tmp/tfwork/
+            cd /tmp/tfwork
+
+            rm -rf .terraform
+            mkdir -p /tmp/tfdata /tmp/terraform-plugin-cache
+            export TF_DATA_DIR=/tmp/tfdata
+            export TF_PLUGIN_CACHE_DIR=/tmp/terraform-plugin-cache
+            export TMPDIR=/tmp
+
+            terraform init -input=false -reconfigure -no-color
 
             echo "Running terraform plan and saving to ${PLAN_FILE}..."
-            terraform plan -out=${PLAN_FILE}
+            terraform plan -no-color -out=${PLAN_FILE}
 
             echo ""
             echo "========== TERRAFORM PLAN (human readable) =========="
             terraform show -no-color ${PLAN_FILE} | tee ${PLAN_TXT}
             echo "====================================================="
+
+            # Copy artifacts back to workspace so Jenkins can archive them
+            mkdir -p ${WORKSPACE}/${TF_DIR}
+            cp ${PLAN_FILE} ${WORKSPACE}/${TF_DIR}/${PLAN_FILE}
+            cp ${PLAN_TXT}  ${WORKSPACE}/${TF_DIR}/${PLAN_TXT}
           '''
         }
       }
@@ -161,15 +187,25 @@ spec:
         container('terraform') {
           sh '''
             set -e
-            cd ${TF_DIR}
+
+            rm -rf /tmp/tfwork
+            mkdir -p /tmp/tfwork
+            cp -R ${TF_DIR}/. /tmp/tfwork/
+            cd /tmp/tfwork
 
             rm -rf .terraform
-            mkdir -p /tmp/terraform-plugin-cache
+            mkdir -p /tmp/tfdata /tmp/terraform-plugin-cache
+            export TF_DATA_DIR=/tmp/tfdata
+            export TF_PLUGIN_CACHE_DIR=/tmp/terraform-plugin-cache
+            export TMPDIR=/tmp
 
-            terraform init -input=false -reconfigure
+            terraform init -input=false -reconfigure -no-color
+
+            # Bring saved plan from workspace into /tmp run dir
+            cp ${WORKSPACE}/${TF_DIR}/${PLAN_FILE} ./${PLAN_FILE}
 
             echo "Applying saved plan..."
-            terraform apply -auto-approve ${PLAN_FILE}
+            terraform apply -no-color -auto-approve ${PLAN_FILE}
           '''
         }
       }
@@ -181,10 +217,22 @@ spec:
       container('terraform') {
         sh '''
           set +e
-          cd ${TF_DIR}
+
+          rm -rf /tmp/tfwork
+          mkdir -p /tmp/tfwork
+          cp -R ${TF_DIR}/. /tmp/tfwork/
+          cd /tmp/tfwork
+
+          rm -rf .terraform
+          mkdir -p /tmp/tfdata /tmp/terraform-plugin-cache
+          export TF_DATA_DIR=/tmp/tfdata
+          export TF_PLUGIN_CACHE_DIR=/tmp/terraform-plugin-cache
+          export TMPDIR=/tmp
+
+          terraform init -input=false -reconfigure -no-color >/dev/null 2>&1 || true
           echo ""
           echo "==== Terraform state list (if available) ===="
-          terraform state list 2>/dev/null || true
+          terraform state list -no-color 2>/dev/null || true
           echo "============================================"
         '''
       }
