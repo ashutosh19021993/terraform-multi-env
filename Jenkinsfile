@@ -48,8 +48,8 @@ spec:
     }
   }
 
-  // Port-forward can't receive webhooks, so poll repo (optional).
-  // Remove this block if you will trigger builds manually.
+  // If you rely on port-forward, webhook won't work.
+  // Keep polling if you want auto trigger; otherwise remove this.
   triggers {
     pollSCM('H/2 * * * *')
   }
@@ -65,12 +65,11 @@ spec:
   }
 
   options {
-    timestamps()
     disableConcurrentBuilds()
+    // removed timestamps() because plugin not available
   }
 
   stages {
-
     stage("Checkout") {
       steps { checkout scm }
     }
@@ -153,7 +152,6 @@ spec:
             set -e
             cd ${TF_DIR}
 
-            # Re-init to be safe in fresh pods/restarts
             terraform init -input=false
 
             echo "Applying saved plan..."
@@ -171,12 +169,11 @@ spec:
           set +e
           cd ${TF_DIR}
           echo ""
-          echo "==== Current Terraform state resources (if available) ===="
+          echo "==== Terraform state list (if available) ===="
           terraform state list 2>/dev/null || true
-          echo "========================================================="
+          echo "============================================"
         '''
       }
     }
   }
 }
-
