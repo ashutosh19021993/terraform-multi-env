@@ -10,7 +10,7 @@ locals {
 
 
 module "ec2" {
-  source = "../../../modules/ec2"
+  source = "../../modules/ec2"
 
   name          = "${var.project}-${var.env}-${var.region}-app1"
   vpc_id        = module.vpc.vpc_id
@@ -21,7 +21,7 @@ module "ec2" {
 }
 
 module "vpc" {
-  source = "../../../modules/vpc"
+  source = "../../modules/vpc"
 
   name = "${var.project}-${var.env}-${var.region}-vpc"
 
