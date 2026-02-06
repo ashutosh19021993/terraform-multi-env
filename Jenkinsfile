@@ -41,7 +41,7 @@ pipeline {
     stage('Terraform Init + Validate') {
       steps {
         withCredentials([[
-          \$class: 'AmazonWebServicesCredentialsBinding',
+          $class: 'AmazonWebServicesCredentialsBinding',
           credentialsId: "aws-${params.ENV}"
         ]]) {
           sh """
@@ -57,7 +57,7 @@ pipeline {
     stage('Terraform Plan') {
       steps {
         withCredentials([[
-          \$class: 'AmazonWebServicesCredentialsBinding',
+          $class: 'AmazonWebServicesCredentialsBinding',
           credentialsId: "aws-${params.ENV}"
         ]]) {
           sh """
@@ -87,7 +87,7 @@ pipeline {
     stage('Terraform Apply') {
       steps {
         withCredentials([[
-          \$class: 'AmazonWebServicesCredentialsBinding',
+          $class: 'AmazonWebServicesCredentialsBinding',
           credentialsId: "aws-${params.ENV}"
         ]]) {
           sh """
