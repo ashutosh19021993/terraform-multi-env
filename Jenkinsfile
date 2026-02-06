@@ -2,15 +2,12 @@ pipeline {
   agent any
 
   parameters {
-    choice(
-      name: 'ENV',
-      choices: ['dev', 'prod'],
-      description: 'Select environment to deploy'
-    )
+    choice(name: 'ENV', choices: ['dev', 'prod'], description: 'Select environment')
   }
 
   environment {
-    TF_DIR    = "terraform/envs/${params.ENV}"
+    TF_DIR = "terraform/envs/${params.ENV}"
+    AWS_REGION = "us-east-1"
     TF_IN_AUTOMATION = "true"
     TF_INPUT = "false"
   }
@@ -21,51 +18,56 @@ pipeline {
   }
 
   stages {
-
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Terraform Format') {
       steps {
-        sh """
+        sh '''
           set -e
           cd ${TF_DIR}
-          terraform fmt  -recursive
-        """
+          terraform fmt -recursive
+        '''
       }
     }
 
     stage('Terraform Init + Validate') {
       steps {
-        withCredentials([[
-          $class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: "aws-${params.ENV}"
-        ]]) {
-          sh """
-            set +e
+        withCredentials([usernamePassword(
+          credentialsId: "aws-${params.ENV}",
+          usernameVariable: 'AWS_ACCESS_KEY_ID',
+          passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+        )]) {
+          sh '''
+            set -e
+            export AWS_DEFAULT_REGION=${AWS_REGION}
+            export AWS_REGION=${AWS_REGION}
+
             cd ${TF_DIR}
-            terraform init -input=false -reconfigure -no-color >/dev/null 2>&1 || true
-            terraform state list -no-color || true
-          """
+            terraform init -input=false -reconfigure -no-color
+            terraform validate -no-color
+          '''
         }
       }
     }
 
     stage('Terraform Plan') {
       steps {
-        withCredentials([[
-          $class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: "aws-${params.ENV}"
-        ]]) {
-          sh """
+        withCredentials([usernamePassword(
+          credentialsId: "aws-${params.ENV}",
+          usernameVariable: 'AWS_ACCESS_KEY_ID',
+          passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+        )]) {
+          sh '''
             set -e
+            export AWS_DEFAULT_REGION=${AWS_REGION}
+            export AWS_REGION=${AWS_REGION}
+
             cd ${TF_DIR}
-            terraform plan -out=tfplan
+            terraform plan -no-color -out=tfplan
             terraform show -no-color tfplan | tee plan.txt
-          """
+          '''
         }
       }
       post {
@@ -79,22 +81,26 @@ pipeline {
     stage('Approve Apply') {
       steps {
         timeout(time: 30, unit: 'MINUTES') {
-          input message: "Apply Terraform changes for ENV=${params.ENV}?"
+          input message: "Apply changes for ENV=${params.ENV}?"
         }
       }
     }
 
     stage('Terraform Apply') {
       steps {
-        withCredentials([[
-          $class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: "aws-${params.ENV}"
-        ]]) {
-          sh """
+        withCredentials([usernamePassword(
+          credentialsId: "aws-${params.ENV}",
+          usernameVariable: 'AWS_ACCESS_KEY_ID',
+          passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+        )]) {
+          sh '''
             set -e
+            export AWS_DEFAULT_REGION=${AWS_REGION}
+            export AWS_REGION=${AWS_REGION}
+
             cd ${TF_DIR}
-            terraform apply -auto-approve tfplan
-          """
+            terraform apply -no-color -auto-approve tfplan
+          '''
         }
       }
     }
@@ -102,11 +108,23 @@ pipeline {
 
   post {
     always {
-      sh """
-        set +e
-        cd ${TF_DIR}
-        terraform state list || true
-      """
+      withCredentials([usernamePassword(
+        credentialsId: "aws-${params.ENV}",
+        usernameVariable: 'AWS_ACCESS_KEY_ID',
+        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+      )]) {
+        sh '''
+          set +e
+          export AWS_DEFAULT_REGION=${AWS_REGION}
+          export AWS_REGION=${AWS_REGION}
+
+          cd ${TF_DIR}
+          terraform init -input=false -reconfigure -no-color >/dev/null 2>&1 || true
+          echo "==== Terraform state list ===="
+          terraform state list -no-color || true
+          echo "=============================="
+        '''
+      }
     }
   }
 }
