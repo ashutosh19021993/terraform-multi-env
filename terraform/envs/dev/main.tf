@@ -12,7 +12,7 @@ module "ec2" {
   name          = "${var.project}-${var.env}-${var.region}-app1"
   vpc_id        = module.vpc.vpc_id
   subnet_id     = module.vpc.public_subnet_ids[0]
-  ami_id        = var.ami_id
+  ami_id        = data.aws_ami.amazon_linux_2.id
   instance_type = var.instance_type
   tags          = local.tags
 }
