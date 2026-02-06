@@ -10,6 +10,7 @@ pipeline {
     TF_DIR = "terraform/envs/${params.ENV}"
     TF_IN_AUTOMATION = "true"
     TF_INPUT = "false"
+    AWS_REGION = "us-east-1"   // change if needed
   }
 
   options {
@@ -19,7 +20,19 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+        script {
+          if (params.COMMIT_ID?.trim()) {
+            sh """
+              set -e
+              git fetch --all
+              git checkout ${params.COMMIT_ID}
+            """
+          }
+          sh 'git rev-parse HEAD'
+        }
+      }
     }
 
     stage('Terraform Format') {
