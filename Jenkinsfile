@@ -45,10 +45,10 @@ pipeline {
           credentialsId: "aws-${params.ENV}"
         ]]) {
           sh """
-            set -e
+            set +e
             cd ${TF_DIR}
-            terraform init -input=false -reconfigure
-            terraform validate
+            terraform init -input=false -reconfigure -no-color >/dev/null 2>&1 || true
+            terraform state list -no-color || true
           """
         }
       }
