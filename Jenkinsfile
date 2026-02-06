@@ -3,11 +3,11 @@ pipeline {
 
   parameters {
     choice(name: 'ENV', choices: ['dev', 'prod'], description: 'Select environment')
+    string(name: 'COMMIT_ID', defaultValue: '', description: 'Optional Git commit SHA (leave empty for latest)')
   }
 
   environment {
     TF_DIR = "terraform/envs/${params.ENV}"
-    AWS_REGION = "us-east-1"
     TF_IN_AUTOMATION = "true"
     TF_INPUT = "false"
   }
