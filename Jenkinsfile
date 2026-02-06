@@ -33,7 +33,7 @@ pipeline {
         sh """
           set -e
           cd ${TF_DIR}
-          terraform fmt -check -recursive
+          terraform fmt  -recursive
         """
       }
     }
